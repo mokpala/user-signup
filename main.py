@@ -7,6 +7,9 @@ page_header = """
 <html>
 <head>
     <title>User Signup</title>
+    <style type="text/css">
+      .error {color: red}
+    </style>
 </head>
 <body>
     <h2>Signup</h2>
@@ -30,33 +33,33 @@ def valid_email(email):
     return EMAIL_RE.match(email)
 
 page_form = """
-<form action='/welcome' method='post'>
+<form action='/' method='post'>
     <table>
         <tr>
             <td><label>Username</label></td>
             <td>
-            <input type='text' name='username' value='%(username)s'/>
+            <input type='text' name='username' value='%(username)s' required/>
             </td>
             <td>
-            <div style="color: red">%(error)s</div>
+            <div class = 'error'>%(user_error)s</div>
             </td>
         </tr>
         <tr>
             <td><label>Password</label></td>
             <td>
-            <input type='password' name='password' value=""/>
+            <input type='password' name='password' value="" required/>
             </td>
             <td>
-            <div style="color: red">%(error)s</div>
+            <div class = 'error'>%(password_error)s</div>
             </td>
         </tr>
         <tr>
             <td><label>Verify Password</label></td>
             <td>
-            <input type='password' name='verify' value=""/>
+            <input type='password' name='verify' value="" required/>
             </td>
             <td>
-            <div style="color: red">%(error)s</div>
+            <div class = 'error'>%(verify_error)s</div>
             </td>
         </tr>
         <tr>
@@ -65,7 +68,7 @@ page_form = """
             <input type='text' name='email' value="%(email)s"/>
             </td>
             <td>
-            <div style="color: red">%(error)s</div>
+            <div class = 'error'>%(email_error)s</div>
             </td>
         </tr>
     </table>
@@ -75,52 +78,56 @@ page_form = """
 
 class MainHandler(webapp2.RequestHandler):
 
-    def write_form(self, username="", error="", email=""):
-        self.response.write(page_form % {"username": username, "error": error, "email": email})
+    def write_form(self, username="", email="", user_error="", password_error="", verify_error="", email_error=""):
+        content = page_header + page_form + page_footer
+        self.response.write(content % {"username": username, "email": email, "user_error": user_error, "password_error": password_error, "verify_error": verify_error, "email_error": email_error})
     
     def get(self):
         self.write_form()
     
     def post(self):
+        is_error = False
         user_username = self.request.get("username")
-        user_password = self.request.get("password")
-        user_verify = self.request.get("verify")
         user_email = self.request.get("email")
+        password = self.request.get("password")
+        verify = self.request.get("verify")
+        error = self.request.get("error")
+        user_error = ""
+        password_error = ""
+        verify_error = ""
+        email_error = ""
         
         username = valid_username(user_username)
-        password = valid_password(user_password)
-        verify = valid_password(user_verify)
+        # password = valid_password(password)
+        # verify = valid_password(verify)
         email = valid_email(user_email)
-        
-        if username == "":
-            self.write_form("Username cannot be blank.", user_username)
-        if not valid_username(username):
-            self.write_form("Please enter a valid username.", user_username)
             
-        if password == "":
-            self.write_form("Password cannot be blank.", user_password)
+        if not username:            
+            user_error = "Please enter a valid username"
+            is_error = True
+            
         if not valid_password(password):
-            self.write_form("Please enter a valid password.", user_password)
+            password_error = "Please enter a valid password"
+            is_error = True
             
-        if verify == "":
-            self.write_form("Please verify your password.", user_verify)
         if verify != password:
-            self.write_form("Your passwords do not match.", user_password, user_verify)
-            
-        if not valid_email(email):
-            self.write_form("Please enter a valid email address.", user_email)
-            
-        else:
-            self.redirect("/welcome")
+            verify_error = "Your passwords do not match"
+            is_error = True
         
-        content = page_header + page_form + page_footer
-        self.response.write(content)
+        if user_email and not email:
+            email_error = "Please enter a valid email address"
+            is_error = True
+            
+        if is_error:
+            self.write_form(username = user_username, email=user_email, user_error=user_error, password_error=password_error, verify_error=verify_error, email_error=email_error)
+        else:
+            self.redirect("/welcome" + "?username=" + user_username)
+        
 
 class Welcome(webapp2.RequestHandler):        
     def get(self):
-        username = valid_username(self.request.get("username"))
-        if valid_username(username):
-            welcome_message = "<h2>Welcome, " + username + "</h2>"
+        user_username = self.request.get("username")
+        welcome_message = "<h2>Welcome, " + user_username + "</h2>"
         self.response.write(welcome_message)
 
 app = webapp2.WSGIApplication([
